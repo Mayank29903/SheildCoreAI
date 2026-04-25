@@ -2,14 +2,16 @@
 
 import os
 import time
+import tempfile
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from config.firebase import init_firebase
-from models.deepfake import preload_deepfake_model, _detector
+from config.firebase import init_firebase, get_firebase_init_error
+from models.deepfake import preload_deepfake_model
 from services.scheduler import start_scheduler, stop_scheduler
 from services.rate_limiter import limiter, _rate_limit_exceeded_handler
 
@@ -23,13 +25,17 @@ from routes.evidence import router as evidence_router
 
 _dashboard_sockets = []
 _scan_progress_sockets = {}
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    os.makedirs('/tmp/sportshield', exist_ok=True)
+    os.makedirs(os.path.join(tempfile.gettempdir(), 'sportshield'), exist_ok=True)
     await preload_deepfake_model()
-    init_firebase()
-    start_scheduler()
+    firebase_ready = init_firebase()
+    if firebase_ready:
+        start_scheduler()
+    else:
+        logger.warning("Starting without Firebase integrations: %s", get_firebase_init_error())
     
     app.state.scan_progress_sockets = _scan_progress_sockets
     app.state.dashboard_sockets = _dashboard_sockets
@@ -106,3 +112,7 @@ async def payload_too_large(request, exc):
 @app.exception_handler(422)
 async def unprocessable_entity(request, exc):
     return JSONResponse(status_code=422, content={'error': 'Validation error', 'message': 'Invalid input', 'details': str(exc)})
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run('main:app', host='0.0.0.0', port=8000, reload=True)

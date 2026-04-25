@@ -9,5 +9,5 @@ export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   
   if (loading) return <PageLoadingSpinner text="Authenticating Operator..." />;
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  return user ? <Outlet /> : <Navigate to="/" replace />;
 }

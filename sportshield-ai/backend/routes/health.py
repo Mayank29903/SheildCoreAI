@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 from datetime import datetime, timezone
-from config.firebase import get_firestore
+from config.firebase import get_firebase_init_error, is_firebase_available
 from models.deepfake import _detector
 from services.scheduler import scheduler
 
@@ -10,13 +10,8 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    firebase_ok = False
-    try:
-        db = get_firestore()
-        db.collection('_health').document('_probe').get()
-        firebase_ok = True
-    except Exception:
-        pass
+    firebase_ok = is_firebase_available()
+    firebase_error = None if firebase_ok else get_firebase_init_error()
         
     return {
         'status': 'operational',
@@ -25,13 +20,14 @@ async def health_check():
         'competition': 'Google Solution Challenge 2026',
         'model_loaded': _detector is not None,
         'firebase_connected': firebase_ok,
+        'firebase_error': firebase_error,
         'scheduler_running': scheduler.running if scheduler else False,
         'components': {
             'deepfake_model': _detector is not None,
             'database': firebase_ok,
-            'realtime': True, 
-            'storage': True, 
-            'auth': True, 
+            'realtime': firebase_ok,
+            'storage': firebase_ok,
+            'auth': firebase_ok,
             'ai': True, 
             'background_jobs': scheduler.running if scheduler else False
         }

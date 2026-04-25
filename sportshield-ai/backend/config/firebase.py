@@ -9,54 +9,128 @@ import os
 import json
 import base64
 import logging
+from pathlib import Path
 import firebase_admin
 from firebase_admin import credentials, firestore, storage, db
 from config.settings import FIREBASE_PROJECT_ID, FIREBASE_CREDENTIALS_JSON
 
 logger = logging.getLogger(__name__)
+_firebase_init_attempted = False
+_firebase_init_error = None
 
-def init_firebase() -> None:
+
+def _resolve_credentials_path(raw_value: str) -> Path | None:
+    candidate = Path(raw_value).expanduser()
+    backend_dir = Path(__file__).resolve().parent.parent
+
+    possible_paths = [candidate]
+    if not candidate.is_absolute():
+        possible_paths.append(backend_dir / candidate)
+        possible_paths.append(Path.cwd() / candidate)
+
+    for path in possible_paths:
+        if path.is_file():
+            return path.resolve()
+    return None
+
+
+def _load_credential_source(raw_value: str):
+    resolved_path = _resolve_credentials_path(raw_value)
+    if resolved_path is not None:
+        logger.info("Loading Firebase credentials from %s", resolved_path)
+        return credentials.Certificate(str(resolved_path))
+
+    if raw_value.startswith('{'):
+        return credentials.Certificate(json.loads(raw_value))
+
+    normalized = ''.join(raw_value.split())
+    if normalized:
+        padding = (-len(normalized)) % 4
+        normalized += '=' * padding
+        decoded_bytes = base64.b64decode(normalized)
+        return credentials.Certificate(json.loads(decoded_bytes.decode('utf-8')))
+
+    raise ValueError("Firebase credentials were empty")
+
+
+def get_firebase_init_error() -> str | None:
+    return _firebase_init_error
+
+
+def is_firebase_available() -> bool:
+    return bool(firebase_admin._apps) or init_firebase()
+
+
+def init_firebase(required: bool = False) -> bool:
     """
     Initializes the Firebase Admin SDK.
-    Uses base64 encoding strategy for the credentials JSON to securely 
-    pass it within Cloud Run environment variables.
+    Accepts either a path to the service account JSON, the raw JSON itself,
+    or a base64-encoded JSON blob.
     """
+    global _firebase_init_attempted, _firebase_init_error
+
     if firebase_admin._apps:
-        return
+        return True
+
+    if _firebase_init_attempted:
+        if required and _firebase_init_error:
+            raise RuntimeError(_firebase_init_error)
+        return False
+
+    if not FIREBASE_PROJECT_ID or not FIREBASE_CREDENTIALS_JSON:
+        _firebase_init_attempted = True
+        _firebase_init_error = (
+            "Firebase disabled: set FIREBASE_PROJECT_ID and "
+            "FIREBASE_CREDENTIALS_JSON to enable database/storage features."
+        )
+        logger.warning(_firebase_init_error)
+        if required:
+            raise RuntimeError(_firebase_init_error)
+        return False
 
     try:
-        decoded_bytes = base64.b64decode(FIREBASE_CREDENTIALS_JSON)
-        cred_dict = json.loads(decoded_bytes.decode('utf-8'))
-
-        cred = credentials.Certificate(cred_dict)
+        cred = _load_credential_source(FIREBASE_CREDENTIALS_JSON)
         firebase_admin.initialize_app(cred, {
             'storageBucket': f"{FIREBASE_PROJECT_ID}.appspot.com",
             'databaseURL': f"https://{FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com"
         })
+        _firebase_init_attempted = True
+        _firebase_init_error = None
         logger.info("Firebase Admin Initialized Successfully")
+        return True
     except Exception as e:
-        logger.error(f"Failed to initialize Firebase Admin: {str(e)}")
-        raise RuntimeError(f"Failed to initialize Firebase Admin: {str(e)}")
+        _firebase_init_attempted = True
+        _firebase_init_error = f"Firebase disabled: {e}"
+        logger.warning(_firebase_init_error)
+        if required:
+            raise RuntimeError(_firebase_init_error) from e
+        return False
+
+
+def _require_firebase() -> None:
+    if init_firebase(required=False):
+        return
+    raise RuntimeError(_firebase_init_error or "Firebase is not available")
 
 def get_firestore() -> firestore.firestore.Client:
     """
     Retrieves the Firestore client after ensuring Firebase initialization.
     """
-    init_firebase()
+    _require_firebase()
     return firestore.client()
 
 def get_bucket():
     """
     Retrieves the Storage bucket after ensuring Firebase initialization.
     """
-    init_firebase()
+    _require_firebase()
     return storage.bucket()
 
 def get_rtdb() -> db.Reference:
     """
     Retrieves the RTDB root reference after ensuring Firebase initialization.
     """
-    init_firebase()
+    _require_firebase()
     return db.reference('/')
 
 def upload_to_storage(local_path: str, remote_path: str) -> str:
@@ -77,6 +151,10 @@ def delete_from_storage(remote_path: str) -> None:
     """
     Deletes a file from Firebase Storage, silently continuing if it fails.
     """
+    if not is_firebase_available():
+        logger.warning("Skipping storage delete for %s because Firebase is unavailable", remote_path)
+        return
+
     try:
         bucket = get_bucket()
         blob = bucket.blob(remote_path)

@@ -29,18 +29,19 @@ The platform uses a decoupled frontend/backend architecture ensuring high scalab
 ## 🚀 Step 1: Setting up Firebase & Google Cloud
 *Why? You need a database to store ownership certificates, images, and user authentication!*
 
-### Firebase Setup
+### Firebase Setup (New Console UI)
 1. Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-2. Select **Start in Production Mode** for Firestore, and locate your region (e.g. `us-central1`).
-3. Set up **Realtime Database** in Test Mode.
-4. Set up **Storage** in Production Mode.
-5. In **Authentication**, enable the "Google" Provider.
+2. In the left sidebar under **Product categories**, click **Databases & Storage**.
+3. Create a **Firestore Database** (Start in Production Mode).
+4. Create a **Realtime Database** (Start in Test Mode).
+5. Create **Storage** (Start in Production Mode).
+6. Click **Security**, then **Authentication**. Click "Get Started", select "Google", and enable it.
 
 ### Getting the "Secret Keys"
 To connect your backend securely to Firebase, you need a Service Account Key.
-1. Go to **Project Settings** > **Service Accounts**.
-2. Click **Generate New Private Key**. This downloads a `.json` file.
-3. Keep this safe! Place it in your backend folder and rename it to `serviceAccountKey.json`.
+1. Click the **Settings (Gear Icon ⚙️)** at the top left > **Service accounts**.
+2. Click **Generate new private key**. This downloads a `.json` file.
+3. Keep this safe! Place it in your `backend` folder and rename it to `serviceAccountKey.json`.
 4. Run `base64 -w 0 serviceAccountKey.json > base64.txt` (Linux/WSL) or `certutil -encode serviceAccountKey.json tmp.b64` (Windows) to encode it if you decide to deploy to Cloud Run!
 
 ### Google Cloud APIs

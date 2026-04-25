@@ -1,20 +1,27 @@
 # SportShield AI | Google Solution Challenge 2026 | First Prize Target
 
 """Two distinct Gemini 2.0 Flash calls.
-Vision: PIL Image object sent DIRECTLY — true multimodal, not text description.
+Vision: PIL Image object sent directly for multimodal analysis.
 Legal: Structured JSON legal action plan in English/Hindi/Tamil."""
 
-import json
 import asyncio
+import json
 import logging
+
 import google.generativeai as genai
 from PIL import Image
+
 from config.settings import GEMINI_API_KEY
 
 logger = logging.getLogger(__name__)
-genai.configure(api_key=GEMINI_API_KEY)
-# We map explicitly to the experimental Flash model capable of blazing multimodal speed
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+model = None
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    # We map explicitly to the experimental Flash model capable of blazing multimodal speed.
+    model = genai.GenerativeModel('gemini-2.0-flash-exp')
+else:
+    logger.warning("GEMINI_API_KEY not set. Gemini-powered analysis will use fallback responses.")
 
 VISION_FALLBACK = {
     'manipulation_detected': False, 'manipulation_signals': [],
@@ -29,12 +36,15 @@ LEGAL_FALLBACK = {
     'legal_sections': ['IT Act 2000', 'Copyright Act 1957'],
     'evidence_to_preserve': ['Original file', 'Upload timestamps'],
     'estimated_timeline': 'Consult legal counsel',
-    'rights_impact': 'Unknown — seek legal advice'
+    'rights_impact': 'Unknown - seek legal advice'
 }
 
+
 async def analyze_image_with_gemini_vision(image_path: str) -> dict:
-    """WHY DIRECT IMAGE BYTES: Gemini receives actual pixels, not a description.
-    This is genuine multimodal AI — not a text prompt about the image."""
+    """Send actual image bytes to Gemini, not just a text description."""
+    if model is None:
+        return VISION_FALLBACK
+
     prompt = '''Analyze this image for digital manipulation and authenticity.
     Respond ONLY with valid JSON (no markdown, no backticks):
     {"manipulation_detected": bool,
@@ -51,31 +61,35 @@ async def analyze_image_with_gemini_vision(image_path: str) -> dict:
             img = Image.open(image_path).convert('RGB')
             loop = asyncio.get_event_loop()
             res = await loop.run_in_executor(None, lambda: model.generate_content([prompt, img]))
-            
+
             txt = res.text.strip('` \n')
-            if txt.startswith('json\n'): txt = txt[5:]
+            if txt.startswith('json\n'):
+                txt = txt[5:]
             return json.loads(txt)
         except Exception as e:
-            logger.warning(f"Gemini vision error: {e}")
+            logger.warning("Gemini vision error: %s", e)
             await asyncio.sleep(1)
-            
+
     return VISION_FALLBACK
 
+
 async def generate_legal_report(scan_data: dict, language: str = 'en') -> dict:
-    """WHY THREE LANGUAGES: SDG 16 requires justice tools accessible to all.
-    Hindi and Tamil speakers shouldn't need an English translator for evidence."""
-    INSTRUCTIONS = {
+    """Generate a structured legal action plan in the requested language."""
+    if model is None:
+        return LEGAL_FALLBACK
+
+    instructions = {
         'en': 'Respond entirely in English.',
         'hi': 'Respond entirely in Hindi script (Devanagari). All text must be in Hindi.',
         'ta': 'Respond entirely in Tamil script. All text must be in Tamil.'
     }
-    lang = INSTRUCTIONS.get(language, INSTRUCTIONS['en'])
+    lang = instructions.get(language, instructions['en'])
     ctx = json.dumps(scan_data, default=str)
-    
+
     prompt = f'''{lang}
     Analyze this incident:
     {ctx}
-    
+
     Respond ONLY with valid JSON formatting:
     {{"summary": "brief situation summary",
      "threat_level": "CRITICAL|HIGH|MEDIUM|LOW",
@@ -94,10 +108,11 @@ async def generate_legal_report(scan_data: dict, language: str = 'en') -> dict:
             loop = asyncio.get_event_loop()
             res = await loop.run_in_executor(None, lambda: model.generate_content(prompt))
             txt = res.text.strip('` \n')
-            if txt.startswith('json\n'): txt = txt[5:]
+            if txt.startswith('json\n'):
+                txt = txt[5:]
             return json.loads(txt)
         except Exception as e:
-            logger.warning(f"Gemini legal format error: {e}")
+            logger.warning("Gemini legal format error: %s", e)
             await asyncio.sleep(1)
-            
+
     return LEGAL_FALLBACK

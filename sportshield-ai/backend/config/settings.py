@@ -6,22 +6,17 @@ Loads environment variables and sets up global application settings.
 """
 
 import os
+import tempfile
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# REQUIRED vars
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID')
-FIREBASE_CREDENTIALS_JSON = os.environ.get('FIREBASE_CREDENTIALS_JSON')
-
-if not GEMINI_API_KEY:
-    raise ValueError("Missing REQUIRED environment variable: GEMINI_API_KEY")
-if not FIREBASE_PROJECT_ID:
-    raise ValueError("Missing REQUIRED environment variable: FIREBASE_PROJECT_ID")
-if not FIREBASE_CREDENTIALS_JSON:
-    raise ValueError("Missing REQUIRED environment variable: FIREBASE_CREDENTIALS_JSON")
+# Optional integration vars. The app should still boot locally even if one
+# of these services is not configured yet.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', '').strip()
+FIREBASE_CREDENTIALS_JSON = os.environ.get('FIREBASE_CREDENTIALS_JSON', '').strip()
 
 # OPTIONAL vars with defaults
 GOOGLE_CSE_KEY = os.environ.get('GOOGLE_CSE_KEY', '')
@@ -35,7 +30,7 @@ HAMMING_THRESHOLD = int(os.environ.get('HAMMING_THRESHOLD', '10'))
 MAX_FILE_SIZE_MB = int(os.environ.get('MAX_FILE_SIZE_MB', '50'))
 DEMO_MODE = os.environ.get('DEMO_MODE', 'false').lower() == 'true'
 PORT = int(os.environ.get('PORT', '8080'))
-TMP_DIR = '/tmp/sportshield'
+TMP_DIR = os.environ.get('TMP_DIR', os.path.join(tempfile.gettempdir(), 'sportshield'))
 
 # Ensure the temporary directory exists
 os.makedirs(TMP_DIR, exist_ok=True)

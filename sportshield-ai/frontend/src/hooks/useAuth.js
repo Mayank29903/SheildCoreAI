@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthChange, signInWithGoogle, logOut } from '../lib/firebase';
+import { onAuthChange, signInWithGoogle, continueAsGuest, logOut } from '../lib/firebase';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -13,5 +13,12 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  return { user, loading, signIn: signInWithGoogle, signOut: logOut };
+  return {
+    user,
+    loading,
+    signIn: signInWithGoogle,
+    signInWithGoogle,
+    continueAsGuest,
+    signOut: logOut,
+  };
 }

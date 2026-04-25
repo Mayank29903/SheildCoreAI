@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { rtdb, ref, onValue, off } from '../lib/firebase';
 
 export function useViralAlerts() {
-    const [alert, setAlert] = useState(null);
+    const [currentAlert, setCurrentAlert] = useState(null);
     const [allAlerts, setAllAlerts] = useState([]);
 
     useEffect(() => {
@@ -19,17 +19,17 @@ export function useViralAlerts() {
                 if (active.length > 0) {
                     const priority = { 'VIRAL_SPREAD': 3, 'RAPID_SPREAD': 2, 'SPREADING': 1 };
                     active.sort((a, b) => (priority[b.alert_level] || 0) - (priority[a.alert_level] || 0));
-                    setAlert(active[0]);
+                    setCurrentAlert(active[0]);
                 } else {
-                    setAlert(null);
+                    setCurrentAlert(null);
                 }
             } else {
                 setAllAlerts([]);
-                setAlert(null);
+                setCurrentAlert(null);
             }
         });
         return () => off(alertsRef, 'value', unsubscribe);
     }, []);
 
-    return { alert, allAlerts };
+    return { currentAlert, allAlerts };
 }

@@ -8,8 +8,8 @@
   "theme_color": "#00d4aa",
   "categories": ["utilities","productivity"],
   "icons": [
-    {"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {"src":"/sportshield-icon-192.png?v=20260425","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/sportshield-icon-512.png?v=20260425","sizes":"512x512","type":"image/png","purpose":"any"}
   ],
   "shortcuts": [
     {"name":"Scan Content","url":"/scan","description":"Scan media for authenticity"},

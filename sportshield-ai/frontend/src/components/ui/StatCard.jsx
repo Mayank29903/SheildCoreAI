@@ -4,16 +4,20 @@ import React from 'react';
 import { useCountUp } from '../../hooks/useCountUp';
 
 export default function StatCard({ value, label, prefix = '', suffix = '', color = 'green', icon: Icon }) {
-  const isNumber = typeof value === 'number';
-  const animatedValue = useCountUp(isNumber ? value : 0, 1200);
-  const displayValue = isNumber ? animatedValue : value;
+  const normalizedNumber =
+    typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  const animatedValue = useCountUp(normalizedNumber, 1200);
+  const displayValue =
+    typeof value === 'string' && value.trim() !== ''
+      ? value
+      : animatedValue.toLocaleString();
 
   return (
     <div className={`stat-card ${color} slide-in`}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div className={`stat-number ${color}`}>
-            {prefix}{displayValue.toLocaleString()}{suffix}
+            {prefix}{displayValue}{suffix}
           </div>
           <div className="stat-label">{label}</div>
         </div>

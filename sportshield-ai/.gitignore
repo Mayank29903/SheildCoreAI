@@ -10,3 +10,4 @@ venv/
 .venv/
 .pytest_cache/
 sa.json
+serviceAccountKey.json

@@ -2,12 +2,29 @@
 /** WHY: The primary gateway. Handles Auth redirection automatically ensuring organizers route straight into mission control. */
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { ShieldAlert, Fingerprint } from 'lucide-react';
 import PageLoadingSpinner from '../components/layout/PageLoadingSpinner';
 
 export default function Landing() {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signIn, continueAsGuest } = useAuth();
+
+  const handleSignIn = async () => {
+    try {
+      await signIn();
+    } catch (error) {
+      toast.error(error?.message || 'Authentication failed');
+    }
+  };
+
+  const handleLocalPreview = async () => {
+    try {
+      await continueAsGuest();
+    } catch (error) {
+      toast.error(error?.message || 'Local preview unavailable');
+    }
+  };
 
   if (loading) return <PageLoadingSpinner text="Establishing Secure Connection..." />;
   if (user) return <Navigate to="/dashboard" replace />;
@@ -29,10 +46,15 @@ export default function Landing() {
           Proprietary Contextual DNA. Cryptographic Provenance.
         </p>
 
-        <button onClick={signInWithGoogle} className="btn" style={{ background: 'var(--color-neon)', color: 'var(--color-deep)', padding: '16px 32px', fontSize: '16px', boxShadow: '0 0 30px rgba(0,212,170,0.4)' }}>
-          <Fingerprint size={20} />
-          AUTHENTICATE OPERATOR
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+          <button onClick={handleSignIn} className="btn" style={{ background: 'var(--color-neon)', color: 'var(--color-deep)', padding: '16px 32px', fontSize: '16px', boxShadow: '0 0 30px rgba(0,212,170,0.4)', minWidth: '280px' }}>
+            <Fingerprint size={20} />
+            SIGN IN WITH GOOGLE
+          </button>
+          <button onClick={handleLocalPreview} className="btn btn-outline" style={{ minWidth: '280px' }}>
+            OPEN LOCAL PREVIEW
+          </button>
+        </div>
         
         <div style={{ marginTop: '64px', display: 'flex', justifyContent: 'center', gap: '32px' }}>
           {['SDG 8: DECENT WORK', 'SDG 16: STRONG INSTITUTIONS'].map(sdg => (

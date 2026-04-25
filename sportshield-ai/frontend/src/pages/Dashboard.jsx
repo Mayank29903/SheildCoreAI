@@ -11,17 +11,17 @@ import { ShieldCheck, Crosshair, AlertOctagon, Activity } from 'lucide-react';
 
 export default function Dashboard() {
   const stats = useDashboardStats();
-  const alert = useViralAlerts();
+  const { currentAlert } = useViralAlerts();
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {alert.is_active && (
+      {currentAlert?.is_active && (
         <div className="viral-banner slide-in">
           <Activity size={24} className="pulse-threat" />
           <div style={{ flex: 1 }}>
             <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', letterSpacing: '0.1em' }}>VIRAL SPREAD DETECTED</h4>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', marginTop: '4px' }}>{alert.asset_name} is propagating across {alert.source_count} unauthorized networks.</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', marginTop: '4px' }}>{currentAlert.asset_name} is propagating across {currentAlert.source_count} unauthorized networks.</p>
           </div>
           <span className="badge badge-critical">IMMEDIATE ACTION REQUIRED</span>
         </div>

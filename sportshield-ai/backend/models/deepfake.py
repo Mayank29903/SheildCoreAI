@@ -1,19 +1,34 @@
 # SportShield AI | Google Solution Challenge 2026 | First Prize Target
 
 """
-WHY: Orchestrates AI inference for deepfake detection. Pre-loads models 
-on startup to avoid 90-second cold start delays, enabling a sub-3-second 
+WHY: Orchestrates AI inference for deepfake detection. Pre-loads models
+on startup to avoid 90-second cold start delays, enabling a sub-3-second
 response time critical for live hackathon demos.
+
+NOTE: On Windows, PyTorch may fail to load due to missing Visual C++
+Redistributable (shm.dll). In that case, the module gracefully degrades
+and all other AI features (Gemini, watermark, EXIF) continue working.
 """
 
 import os
-import cv2
 import asyncio
-import numpy as np
+import logging
 import tempfile
-from PIL import Image
-from transformers import pipeline
 from concurrent.futures import ThreadPoolExecutor
+
+logger = logging.getLogger(__name__)
+
+# Graceful import — PyTorch may not load on Windows without VC++ Runtime
+try:
+    import cv2
+    import numpy as np
+    from PIL import Image
+    from transformers import pipeline
+    TORCH_AVAILABLE = True
+except (OSError, ImportError) as e:
+    logger.warning(f"PyTorch/Transformers unavailable: {e}")
+    logger.warning("Deepfake detection disabled. All other features work.")
+    TORCH_AVAILABLE = False
 
 MODEL_ID = 'dima806/deepfake_vs_real_image_detection'
 
@@ -28,6 +43,9 @@ async def preload_deepfake_model():
     Model is loaded from Docker layer cache, not downloaded at runtime.
     """
     global _detector
+    if not TORCH_AVAILABLE:
+        logger.warning("Skipping deepfake model — PyTorch not available.")
+        return
     if _detector is None:
         loop = asyncio.get_event_loop()
         _detector = await loop.run_in_executor(
