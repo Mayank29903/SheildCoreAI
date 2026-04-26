@@ -27,6 +27,7 @@ import {
   Shield,
   Zap,
   Globe,
+  Download,
 } from "lucide-react";
 
 const FILTER_TYPES = ["all", "deepfake", "theft", "both"];
@@ -114,6 +115,21 @@ export default function ViolationsFeed() {
     fetchViolations();
   }, [fetchViolations]);
 
+  const handleExportCSV = () => {
+    if (!violations.length) return;
+    const header = "Violation ID,Asset Name,Detection Type,Source Domain,Status,Timestamp\n";
+    const rows = violations.map(v => 
+      `${v.violation_id},"${v.asset_name}",${v.detection_type},${v.source_domain},${v.status},${new Date(v.detected_at).toISOString()}`
+    ).join("\n");
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `violations_legal_log_${new Date().getTime()}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleTakedownSent = (id) => {
     setViolations((prev) =>
       prev.map((v) =>
@@ -188,15 +204,26 @@ export default function ViolationsFeed() {
             </p>
           </div>
         </div>
-        <button
-          className="btn btn-outline btn-sm"
-          onClick={() => fetchViolations(false)}
-          disabled={refreshing}
-          style={{ display: "flex", alignItems: "center", gap: "6px" }}
-        >
-          <RefreshCw size={13} className={refreshing ? "spin" : ""} />
-          REFRESH
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={handleExportCSV}
+            disabled={violations.length === 0}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            <Download size={13} />
+            EXPORT LEGAL LOG (CSV)
+          </button>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => fetchViolations(false)}
+            disabled={refreshing}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            <RefreshCw size={13} className={refreshing ? "spin" : ""} />
+            REFRESH
+          </button>
+        </div>
       </div>
 
       {/* ── STATS ROW ── */}

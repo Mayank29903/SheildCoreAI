@@ -54,6 +54,17 @@ export default function ScanResults({ scanResult }) {
   const [report, setReport] = useState(scanResult?.gemini_legal_report);
   const [loadingReport, setLoadingReport] = useState(false);
 
+  React.useEffect(() => {
+    if (scanResult && (scanResult.threat_level === "CRITICAL" || scanResult.threat_level === "HIGH")) {
+      const msg = scanResult.deepfake_is_fake 
+        ? "Critical Alert. Unauthorized deepfake detected. Initiating legal protocol."
+        : "Alert. Unauthorized asset use detected. Rights chain violated.";
+      const utterance = new SpeechSynthesisUtterance(msg);
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [scanResult]);
+
   if (!scanResult) return null;
 
   const dnaResult = buildDnaResult(scanResult);

@@ -1,7 +1,7 @@
 // ShieldCore AI | Google Solution Challenge 2026 | First Prize Target
 /** WHY: Core routing component. Added /assets route for Content Registry page. */
 import React, { Suspense, lazy } from "react";
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "react-hot-toast";
 
@@ -71,6 +71,18 @@ const wrap = (Component) => (
 
 export default function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        navigate("/scan");
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
 
   return (
     <>
