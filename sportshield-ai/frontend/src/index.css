@@ -322,7 +322,7 @@ body {
 
 /* ── UTILS ── */
 .divider { height: 1px; background: var(--color-border); margin: 24px 0; }
-.text-gradient { background: linear-gradient(135deg, var(--color-neon), var(--color-info)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.text-gradient { background: linear-gradient(135deg, var(--color-neon), var(--color-info)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .skeleton { background: var(--color-surface); border-radius: 6px; animation: skeleton-pulse 1.5s ease-in-out infinite; }
 .skeleton-text { height: 16px; width: 80%; }
 
