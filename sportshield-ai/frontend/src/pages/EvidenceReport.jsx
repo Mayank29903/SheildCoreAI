@@ -1,7 +1,7 @@
 // SportShield AI | Google Solution Challenge 2026 | First Prize Target
 /** WHY: Fills the direct /report/:id routing link generating immutable proof directly out from isolated parameters securely mapping DB hashes. */
 import React, { useEffect, useState } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import PageLoadingSpinner from "../components/layout/PageLoadingSpinner";
@@ -10,12 +10,21 @@ import { FileText } from "lucide-react";
 
 export default function EvidenceReport() {
   const { scanId } = useParams();
+  const location = useLocation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const demoResult = location.state?.demoResult || null;
 
   useEffect(() => {
     let active = true;
     if (!scanId) return;
+    if (demoResult) {
+      setData(demoResult);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
     getDoc(doc(db, "scans", scanId))
       .then((snap) => {
         if (active) {
@@ -33,7 +42,39 @@ export default function EvidenceReport() {
 
   if (loading)
     return <PageLoadingSpinner text="RETRIEVING CRYPTOGRAPHIC EVIDENCE..." />;
-  if (!data) return <Navigate to="/dashboard" replace />;
+  if (!data)
+    return (
+      <div
+        className="card"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+          maxWidth: "720px",
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "20px",
+            letterSpacing: "0.08em",
+          }}
+        >
+          REPORT NOT READY
+        </h2>
+        <p
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "12px",
+            color: "var(--color-text-dim)",
+          }}
+        >
+          The legal report for scan ID <strong>{scanId}</strong> was not found in
+          Firestore yet. If this came from a live scan, wait a few seconds and
+          try again. Demo sample reports open directly from the demo gallery.
+        </p>
+      </div>
+    );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>

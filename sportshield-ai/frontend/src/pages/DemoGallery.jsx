@@ -603,7 +603,7 @@ function ScanOverlay({ result, onClose }) {
               onClick={() => {
                 const scanId = result.id === "fake_deepfake_001" ? "demo_scan_deepfake_001" : 
                                result.id === "fake_stolen_002" ? "demo_scan_theft_002" : "demo_scan_dual_003";
-                navigate(`/report/${scanId}`);
+                navigate(`/report/${scanId}`, { state: { demoResult: result } });
               }}
               style={{
                 flex: 2, padding: "10px",
