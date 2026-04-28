@@ -37,6 +37,15 @@ _detector = None
 _executor = ThreadPoolExecutor(max_workers=2)
 
 
+def _deepfake_disabled() -> bool:
+    return os.environ.get("DISABLE_DEEPFAKE_MODEL", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def _model_cache_present() -> bool:
     repo_dir = "models--dima806--deepfake_vs_real_image_detection"
     cache_roots = []
@@ -82,6 +91,9 @@ async def preload_deepfake_model():
     If model isn't cached, we timeout after 10s and fall back gracefully.
     """
     global _detector
+    if _deepfake_disabled():
+        logger.warning("Skipping deepfake model - disabled by DISABLE_DEEPFAKE_MODEL.")
+        return
     if not TORCH_AVAILABLE:
         logger.warning("Skipping deepfake model — PyTorch not available.")
         return
@@ -189,6 +201,15 @@ async def detect_deepfake(image_path: str) -> dict:
     WHY: Async wrapper so FastAPI routes don't block the event loop.
     CPU inference runs in ThreadPoolExecutor to avoid blocking.
     """
+    if _deepfake_disabled():
+        return {
+            'is_fake': False,
+            'confidence': 0.0,
+            'verdict': 'DEEPFAKE_SKIPPED: disabled by config',
+            'risk_label': 'UNKNOWN',
+            'frames_analyzed': 0,
+            'duration_seconds': None
+        }
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(_executor, _run_single_inference, image_path)
     result['duration_seconds'] = None
@@ -199,6 +220,15 @@ async def detect_deepfake_video(video_path: str) -> dict:
     WHY: Sample 16 frames with np.linspace for temporal coverage.
     Averaging across frames reduces false positives from single bad frames.
     """
+    if _deepfake_disabled():
+        return {
+            'is_fake': False,
+            'confidence': 0.0,
+            'verdict': 'DEEPFAKE_SKIPPED: disabled by config',
+            'risk_label': 'UNKNOWN',
+            'frames_analyzed': 0,
+            'duration_seconds': None
+        }
     try:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
