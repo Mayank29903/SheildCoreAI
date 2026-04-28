@@ -221,6 +221,10 @@ async def scan_by_url(request: Request, background_tasks: BackgroundTasks):
             if resp.status_code != 200:
                 from fastapi import HTTPException
                 raise HTTPException(400, f"Could not download URL: HTTP {resp.status_code}")
+            ct = resp.headers.get('content-type', 'image/jpeg').split(';')[0].strip().lower()
+            if not (ct.startswith('image/') or ct.startswith('video/')):
+                from fastapi import HTTPException
+                raise HTTPException(400, "URL must point directly to an image or video file")
             with open(tmp_path, 'wb') as f:
                 f.write(resp.content)
     except _httpx.RequestError as e:
@@ -229,7 +233,6 @@ async def scan_by_url(request: Request, background_tasks: BackgroundTasks):
 
     # Detect mime type from content
     import mimetypes as _mimetypes
-    ct = resp.headers.get('content-type', 'image/jpeg').split(';')[0].strip()
     ext = _mimetypes.guess_extension(ct) or '.jpg'
     final_path = os.path.join(TMP_DIR, f"{scan_id}_url{ext}")
     os.rename(tmp_path, final_path)

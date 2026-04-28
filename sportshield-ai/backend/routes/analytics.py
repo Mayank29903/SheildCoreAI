@@ -130,9 +130,13 @@ async def get_analytics():
 
         ret = {
             'total_assets': len(assets),
+            'assets_protected': len(assets),
             'scans_today': scans_today,
+            'total_scans_today': scans_today,
             'violations_today': len(violation_dicts),
             'violations_total': len(violation_dicts),
+            'active_violations': len(violation_dicts),
+            'rights_value_protected_usd': rights,
             'threats_by_type': threats,
             'sport_breakdown': sport_bd,
             'top_infringing_domains': top_domains_list,

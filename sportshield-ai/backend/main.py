@@ -1,5 +1,6 @@
 # SportShield AI | Google Solution Challenge 2026 | First Prize Target
 
+import asyncio
 import os
 import time
 import tempfile
@@ -28,12 +29,15 @@ from routes.demo import router as demo_router
 
 _dashboard_sockets = []
 _scan_progress_sockets = {}
+_model_preload_task = None
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _model_preload_task
     os.makedirs(os.path.join(tempfile.gettempdir(), 'sportshield'), exist_ok=True)
-    await preload_deepfake_model()
+    # Warm the deepfake model in the background so container startup stays fast.
+    _model_preload_task = asyncio.create_task(preload_deepfake_model())
     firebase_ready = init_firebase()
     if firebase_ready:
         start_scheduler()
@@ -43,6 +47,8 @@ async def lifespan(app: FastAPI):
     app.state.scan_progress_sockets = _scan_progress_sockets
     app.state.dashboard_sockets = _dashboard_sockets
     yield
+    if _model_preload_task and not _model_preload_task.done():
+        _model_preload_task.cancel()
     stop_scheduler()
 
 app = FastAPI(title='ShieldCore AI', version='2.0.0', lifespan=lifespan)
@@ -63,7 +69,7 @@ app.include_router(analytics_router, prefix="/analytics")
 app.include_router(crawl_router, prefix="/crawl")
 app.include_router(evidence_router, prefix="/evidence")
 app.include_router(assets_router, prefix="/assets")
-app.include_router(demo_router, prefix="/demo")
+app.include_router(demo_router)
 
 # Mount offline demo images
 demo_dir = os.path.join(os.path.dirname(__file__), "DEMO_DATASET")

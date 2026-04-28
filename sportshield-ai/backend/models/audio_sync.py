@@ -8,7 +8,6 @@ Standard deepfake detectors only check visuals. We add audio-visual sync.
 
 import cv2
 import asyncio
-import librosa
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
@@ -19,6 +18,8 @@ def _analyze_audio_visual_sync_sync(video_path: str) -> dict:
     Synchronous analysis of audio/visual synchronization.
     """
     try:
+        import librosa
+
         # Load audio up to 30s
         audio, sr = librosa.load(video_path, sr=16000, duration=30.0)
         

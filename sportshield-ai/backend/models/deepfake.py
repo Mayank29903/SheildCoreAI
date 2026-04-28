@@ -14,6 +14,7 @@ import os
 import asyncio
 import logging
 import tempfile
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,6 @@ try:
     import cv2
     import numpy as np
     from PIL import Image
-    from transformers import pipeline
     TORCH_AVAILABLE = True
 except (OSError, ImportError) as e:
     logger.warning(f"PyTorch/Transformers unavailable: {e}")
@@ -35,6 +35,44 @@ MODEL_ID = 'dima806/deepfake_vs_real_image_detection'
 # Module-level globals
 _detector = None
 _executor = ThreadPoolExecutor(max_workers=2)
+
+
+def _model_cache_present() -> bool:
+    repo_dir = "models--dima806--deepfake_vs_real_image_detection"
+    cache_roots = []
+
+    hf_home = os.environ.get("HF_HOME", "").strip()
+    if hf_home:
+        cache_roots.append(Path(hf_home))
+
+    transformers_cache = os.environ.get("TRANSFORMERS_CACHE", "").strip()
+    if transformers_cache:
+        cache_roots.append(Path(transformers_cache))
+
+    home = Path.home()
+    cache_roots.extend([
+        home / ".cache" / "huggingface",
+        home / ".cache" / "huggingface" / "hub",
+        Path("/root/.cache/huggingface"),
+        Path("/root/.cache/huggingface/hub"),
+    ])
+
+    checked = set()
+    for root in cache_roots:
+        if not root:
+            continue
+        root = root.expanduser()
+        if root in checked:
+            continue
+        checked.add(root)
+        candidates = [
+            root / repo_dir,
+            root / "hub" / repo_dir,
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return True
+    return False
 
 async def preload_deepfake_model():
     """
@@ -48,12 +86,19 @@ async def preload_deepfake_model():
         logger.warning("Skipping deepfake model — PyTorch not available.")
         return
     if _detector is None:
+        if not _model_cache_present():
+            logger.warning("Skipping deepfake model — no local HuggingFace cache found for %s.", MODEL_ID)
+            return
         try:
+            # Cloud Run/runtime must stay offline for model resolution.
+            # The Dockerfile preloads the model during image build.
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
+            os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
             loop = asyncio.get_event_loop()
             _detector = await asyncio.wait_for(
                 loop.run_in_executor(
                     _executor,
-                    lambda: pipeline('image-classification', model=MODEL_ID)
+                    _load_detector_from_local_cache
                 ),
                 timeout=15
             )
@@ -62,6 +107,28 @@ async def preload_deepfake_model():
             logger.warning("Deepfake model load timed out (15s). Will use fallback scores.")
         except Exception as e:
             logger.warning(f"Deepfake model load failed: {e}. Will use fallback scores.")
+
+
+def _load_detector_from_local_cache():
+    from transformers import (
+        pipeline,
+        AutoImageProcessor,
+        AutoModelForImageClassification,
+    )
+
+    model = AutoModelForImageClassification.from_pretrained(
+        MODEL_ID,
+        local_files_only=True,
+    )
+    processor = AutoImageProcessor.from_pretrained(
+        MODEL_ID,
+        local_files_only=True,
+    )
+    return pipeline(
+        "image-classification",
+        model=model,
+        image_processor=processor,
+    )
 
 def _run_single_inference(image_path: str) -> dict:
     """
