@@ -1,0 +1,5 @@
+.git
+.vscode
+sportshield-ai/frontend/node_modules
+sportshield-ai/frontend/dist
+**/__pycache__
