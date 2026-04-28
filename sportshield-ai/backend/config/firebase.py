@@ -20,7 +20,10 @@ _firebase_init_error = None
 
 
 def _resolve_credentials_path(raw_value: str) -> Path | None:
-    candidate = Path(raw_value).expanduser()
+    try:
+        candidate = Path(raw_value).expanduser()
+    except OSError:
+        return None
     backend_dir = Path(__file__).resolve().parent.parent
 
     possible_paths = [candidate]
@@ -29,19 +32,24 @@ def _resolve_credentials_path(raw_value: str) -> Path | None:
         possible_paths.append(Path.cwd() / candidate)
 
     for path in possible_paths:
-        if path.is_file():
-            return path.resolve()
+        try:
+            if path.is_file():
+                return path.resolve()
+        except OSError:
+            continue
     return None
 
 
 def _load_credential_source(raw_value: str):
+    raw_value = raw_value.strip()
+
+    if raw_value.startswith('{'):
+        return credentials.Certificate(json.loads(raw_value))
+
     resolved_path = _resolve_credentials_path(raw_value)
     if resolved_path is not None:
         logger.info("Loading Firebase credentials from %s", resolved_path)
         return credentials.Certificate(str(resolved_path))
-
-    if raw_value.startswith('{'):
-        return credentials.Certificate(json.loads(raw_value))
 
     normalized = ''.join(raw_value.split())
     if normalized:
